@@ -1,1 +1,75 @@
+#include <Arduino.h>
+#include <Stepper.h>
 
+// Definições do Motor de Passo (28BYJ-48)
+const int stepsPerRevolution = 2048;
+// Pinos: IN1, IN3, IN2, IN4 (Sequência correta para o driver ULN2003 com Stepper.h)
+Stepper motorX(stepsPerRevolution, 13, 14, 12, 27);
+
+const int pinosMotor[] = {13, 14, 12, 27};
+
+// Variáveis dos sensores (Simulados)
+float s_top_left = 0, s_top_right = 0;
+float s_bot_left = 0, s_bot_right = 0;
+
+const float deadzone = 10.0; 
+bool emMovimento = false;
+
+// Função crucial para evitar superaquecimento
+void desligarMotor() {
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(pinosMotor[i], LOW);
+  }
+  Serial.println(">> Motor DESLIGADO (Bobinas desenergizadas).");
+}
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Configura pinos como saída para garantir o desligamento total
+  for (int i = 0; i < 4; i++) {
+    pinMode(pinosMotor[i], OUTPUT);
+    digitalWrite(pinosMotor[i], LOW);
+  }
+
+  motorX.setSpeed(15); 
+  Serial.println("\n--- SOLAR TRACKER: TESTE DE TOLERANCIA ---");
+  Serial.println("Envie: TL,TR,BL,BR (ex: 50,55,50,55 para testar desligamento)");
+}
+
+void loop() {
+  // 1. Entrada de dados
+  if (Serial.available() > 0) {
+    s_top_left = Serial.parseFloat();
+    s_top_right = Serial.parseFloat();
+    s_bot_left = Serial.parseFloat();
+    s_bot_right = Serial.parseFloat();
+    
+    while(Serial.available() > 0) { Serial.read(); } // Limpa buffer
+
+    Serial.printf("\nLendo: TL:%.1f TR:%.1f BL:%.1f BR:%.1f\n", s_top_left, s_top_right, s_bot_left, s_bot_right);
+    emMovimento = true;
+  }
+
+  // 2. Lógica de movimento e parada
+  if (emMovimento) {
+    float avg_left = (s_top_left + s_bot_left) / 2;
+    float avg_right = (s_top_right + s_bot_right) / 2;
+    float diffX = avg_left - avg_right;
+
+    if (abs(diffX) > deadzone) {
+      Serial.print("."); // Indicador visual de movimento
+      if (diffX > 0) {
+        motorX.step(15); 
+      } else {
+        motorX.step(-15);
+      }
+    } else {
+      // Diferença dentro da tolerância (10%)
+      Serial.println("\n[OK] Alinhamento dentro da tolerancia.");
+      desligarMotor(); // Desliga fisicamente as bobinas
+      emMovimento = false;
+      Serial.println("\nAguardando novos valores...");
+    }
+  }
+}
