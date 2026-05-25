@@ -30,17 +30,18 @@ void setup() {
   ina3221.setAveragingMode(INA3221_AVG_1024_SAMPLES);
 
   // Rotina de leitura que ée xecutada a cada 5 minutos (tempo ainda não definido)
-  float tensaoPainel = ina3221.getBusVoltage_V(INA3221_CH1);
-  float correntePainel = ina3221.getCurrent_mA(INA3221_CH1);
+float tensaoPainel = ina3221.getBusVoltage(0); 
   
-  // Laço para guardar na menória RTC
+  float correntePainel = ina3221.getCurrentAmps(0) * 1000.0;
+
+  // Laço para guardar na memória RTC
   if (indiceAmostra < 12) {
     bufferCorrente[indiceAmostra] = correntePainel;
-    bufferTensaoPainel[indiceAmostra] = tensao;
+    bufferTensaoPainel[indiceAmostra] = tensaoPainel;
     
     Serial.print("Amostra");
     Serial.print(indiceAmostra + 1);
-    Serial.println(" salva na memóriaRTC.");
+    Serial.println(" salva na memória RTC.");
     
     indiceAmostra++; // Avança para o próximo ciclo de 5 minutos
   }
@@ -52,7 +53,7 @@ void setup() {
     Serial.println("Ciclo de 1 Hora atingido. Iniciando envio...");
 
     // 1. Lê a tensão instantânea da Bateria no Canal 2
-    float tensaoBateria = ina3221.getBusVoltage_V(INA3221_CH2);
+float tensaoBateria = ina3221.getBusVoltage(1);
 
     // 2. Constrói o Payload compactado
     String payload = "VBAT:" + String(tensaoBateria, 2) + "|I:";
@@ -63,9 +64,7 @@ void setup() {
 
     Serial.println("Payload formatado: " + payload);
     
-    // Chamadas futuras (Motor e LoRa)
-    // enviarViaLoRa(payload); 
-    // ajustarMotoresStepTracking();
+    //adicionar aqui o código do motor, LDRS e envio Lora
 
     // 3. Reseta o contador para zerar a memória para a próxima hora
     indiceAmostra = 0; 
